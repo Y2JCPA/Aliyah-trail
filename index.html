@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>The Aliyah Trail - Philip Stein & Associates</title>
+  <meta name="description" content="Can you survive taxes, bureaucracy, and Israeli banks? An Oregon Trail-style game for Americans making Aliyah." />
+  <meta property="og:title" content="The Aliyah Trail" />
+  <meta property="og:description" content="Can you survive taxes, bureaucracy, and Israeli banks? Play the Aliyah Trail!" />
+  <meta property="og:type" content="website" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🇮🇱</text></svg>" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { background: #0a0f0a; font-family: 'Courier New', monospace; color: #33ff33; overflow-x: hidden; }
+    #app { max-width: 500px; margin: 0 auto; padding: 16px; min-height: 100vh; }
+    .card { background: #0d140d; border: 1px solid #1a5c1a; border-radius: 8px; padding: 14px; margin-bottom: 10px; }
+    .btn {
+      display: block; width: 100%; padding: 12px 14px; background: #0d140d;
+      border: 1px solid #1a5c1a; border-radius: 6px; color: #33ff33;
+      font-family: 'Courier New', monospace; font-size: 11px; text-align: left;
+      cursor: pointer; margin-bottom: 8px; line-height: 1.5;
+    }
+    .btn:active { transform: scale(0.97); opacity: 0.8; }
+    .btn-hi { background: rgba(51,255,51,0.1); border-color: #33ff33; }
+    .green { color: #33ff33; }
+    .dim { color: #8bab8b; }
+    .accent { color: #44ffaa; }
+    .red { color: #ff6644; }
+    .blue { color: #44aaff; }
+    .bar-track { width: 100%; height: 8px; background: #111; border: 1px solid #333; border-radius: 2px; }
+    .bar-fill { height: 100%; border-radius: 1px; transition: width 0.4s; }
+    .progress-track { width: 100%; height: 5px; background: #111; border: 1px solid #333; border-radius: 3px; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #33ff33, #44ffaa); border-radius: 2px; transition: width 0.4s; }
+    .result-box { background: rgba(51,255,51,0.04); border: 1px solid #1a5c1a; border-radius: 6px; padding: 12px; margin-bottom: 14px; }
+    .tip-box { background: rgba(51,255,51,0.04); border: 1px solid #44ffaa; border-radius: 8px; padding: 14px; margin-bottom: 10px; }
+    .center { text-align: center; }
+    .bold { font-weight: bold; }
+    .mb4 { margin-bottom: 4px; }
+    .mb6 { margin-bottom: 6px; }
+    .mb8 { margin-bottom: 8px; }
+    .mb10 { margin-bottom: 10px; }
+    .mb16 { margin-bottom: 16px; }
+    .mb20 { margin-bottom: 20px; }
+    .mb24 { margin-bottom: 24px; }
+    .mb30 { margin-bottom: 30px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script>
+    // ── DATA ──
+    const PHASES = [
+      "Pre-Aliyah Planning", "Nefesh B'Nefesh Flight", "Landing at Ben Gurion",
+      "Misrad Haklita", "Finding an Apartment", "Opening a Bank Account",
+      "Bituach Leumi", "Kids in School", "First Israeli Tax Season", "Settled in Israel!"
+    ];
+
+    const PROFESSIONS = [
+      { name: "Tech Worker with RSUs", startMoney: 85000, desc: "Great salary, but oh boy those equity taxes..." },
+      { name: "Remote US Employee", startMoney: 60000, desc: "Working US hours from Israel. Sleep is optional." },
+      { name: "Rabbi / Jewish Educator", startMoney: 35000, desc: "Rich in spirit. Less so in shekels." },
+      { name: "Retired with 401(k)", startMoney: 120000, desc: "Golden years, golden headaches with PFIC rules." }
+    ];
+
+    const CITIES = [
+      { name: "Jerusalem", cost: 1.3, desc: "Holy city, unholy rent prices" },
+      { name: "Beit Shemesh", cost: 0.9, desc: "Anglo paradise. You'll never need Hebrew... right?" },
+      { name: "Ra'anana", cost: 1.2, desc: "So many Anglos, is this still Israel?" },
+      { name: "Modi'in", cost: 1.0, desc: "Perfectly planned city. No character, but great parks." },
+      { name: "Tel Aviv", cost: 1.6, desc: "Hope you like roommates. And hummus for dinner." }
+    ];
+
+    const ALL_EVENTS = [
+      { text: "Your Israeli bank discovers you're American. The branch manager's face goes pale. They ask you to bring 47 different documents.", icon: "\u{1F3E6}", choices: [
+        { text: "Bring all 47 documents", money: -500, morale: -10, prog: 1, result: "They still need 3 more. But you're getting closer!" },
+        { text: "Try a different bank", money: -200, morale: -15, result: "The next bank also panics when they hear 'American citizen.'" },
+        { text: "Cry in the lobby", morale: -5, result: "An elderly Israeli woman brings you tea and cookies. You feel slightly better." }
+      ]},
+      { text: "FBAR deadline is approaching! You realize you forgot to report your Israeli accounts.", icon: "\u{1F4CB}", choices: [
+        { text: "Call your US accountant immediately", money: -2000, morale: 5, prog: 1, result: "Your accountant at Philip Stein & Associates saves the day. Crisis averted!" },
+        { text: "Try to file it yourself on FinCEN", morale: -20, result: "You accidentally reported your shekels as dollars. The IRS is very interested now." },
+        { text: "Panic and do nothing", money: -10000, morale: -25, result: "The penalty notice arrives. It's... not pretty." }
+      ]},
+      { text: "You're at the supermarket. The cashier is yelling at you in rapid Hebrew. Something about a moadon?", icon: "\u{1F6D2}", choices: [
+        { text: "Nod and say 'Ken, ken'", money: -50, morale: -5, result: "You accidentally signed up for a loyalty club. You'll get 5% off cottage cheese!" },
+        { text: "Respond in English", morale: -10, hebrew: -5, result: "The entire line behind you sighs collectively." },
+        { text: "Use Google Translate", morale: 5, hebrew: 5, result: "The phone translates 'club card' as 'war hammer.' But you figured it out!" }
+      ]},
+      { text: "Your RSUs just vested! Both the US and Israel want to tax them.", icon: "\u{1F4B0}", choices: [
+        { text: "Hire a cross-border tax specialist", money: -5000, morale: 10, prog: 1, result: "They navigate the US-Israel tax treaty beautifully. Money well spent." },
+        { text: "Report only to the IRS", money: -15000, morale: -20, result: "Mas Hachnasa would like a word with you. And some back taxes." },
+        { text: "Sell everything and convert to shekels", money: -8000, morale: -10, result: "The exchange rate moves against you. Classic." }
+      ]},
+      { text: "Your landlord demands 12 months rent upfront plus 12 post-dated checks. And a guarantor who owns property in Israel.", icon: "\u{1F3E0}", choices: [
+        { text: "Negotiate to 6 months + checks", money: -3000, morale: 5, result: "They agree! You feel like you won the lottery." },
+        { text: "Accept the terms", money: -8000, morale: -15, result: "Your bank account weeps. But at least you have a home." },
+        { text: "Keep looking", morale: -10, result: "3 weeks later, the next landlord wants the same thing." }
+      ]},
+      { text: "You need an Israeli phone plan. The Cellcom rep is speaking at 400 words per minute.", icon: "\u{1F4F1}", choices: [
+        { text: "Say 'Yesh li Nefesh B'Nefesh deal'", money: -200, morale: 10, result: "Magic words! You get the Oleh Chadash discount." },
+        { text: "Sign whatever they put in front of you", money: -800, morale: -10, result: "Congrats, you now have 5 phone lines and internet for a house you don't own." },
+        { text: "Ask a friend to translate", money: -300, morale: 5, hebrew: 5, result: "Your friend negotiates in aggressive Hebrew. Decent deal!" }
+      ]},
+      { text: "Bituach Leumi sends you a letter. It's in Hebrew. With numbers. Big numbers.", icon: "\u{1F3DB}\uFE0F", choices: [
+        { text: "Take it to your accountant", money: -500, morale: 10, prog: 1, result: "Turns out you're eligible for reduced payments as a new Oleh. Relief!" },
+        { text: "Pay whatever it says", money: -4000, morale: -15, result: "You overpaid by 8,000 NIS. Good luck getting a refund." },
+        { text: "Ignore it", money: -6000, morale: -20, result: "They add penalties. And interest. And more penalties on the interest." }
+      ]},
+      { text: "Your 401(k) provider found out you live abroad. They're 'reviewing your account.'", icon: "\u2708\uFE0F", choices: [
+        { text: "Consult a cross-border financial advisor", money: -2000, morale: 10, prog: 1, result: "They help you navigate PFIC rules and avoid a tax disaster." },
+        { text: "Roll it into an IRA", money: -1000, morale: -5, result: "Possible but complicated. Israel may tax the gains differently." },
+        { text: "Withdraw it all", money: -20000, morale: -25, result: "Early withdrawal penalty + US tax + Israeli tax = very expensive mistake." }
+      ]},
+      { text: "A letter from the IRS arrives at your old US address. Your parents forward it 6 weeks later.", icon: "\u{1F4EE}", choices: [
+        { text: "Set up a US mailing service", money: -300, morale: 10, result: "Smart move. You now get mail scanned and forwarded digitally." },
+        { text: "Change your address with the IRS", morale: 5, result: "Done! Only took 3 phone calls and 45 minutes on hold." },
+        { text: "Hope it wasn't important", money: -5000, morale: -15, result: "It was a CP2000 notice. It was important." }
+      ]},
+      { text: "Your Hebrew ulpan teacher asks you to read aloud. Everyone is watching.", icon: "\u{1F5E3}\uFE0F", choices: [
+        { text: "Give it your best shot", morale: 5, hebrew: 15, result: "You pronounced everything wrong but the class cheers you on!" },
+        { text: "Say 'Ani lo mevin'", morale: -5, hebrew: 5, result: "The teacher smiles sadly. 'That's actually correct Hebrew!' she says." },
+        { text: "Fake a phone call and leave", morale: -10, hebrew: -5, result: "Everyone saw you 'answer' a phone that wasn't ringing." }
+      ]},
+      { text: "Your kids' school sends a WhatsApp. In Hebrew. Field trip tomorrow. They need 150 NIS and a signed slip.", icon: "\u{1F3EB}", choices: [
+        { text: "Google Translate + emergency cash", money: -150, morale: -5, hebrew: 5, result: "Your kid makes it on the trip! You sent the wrong form though." },
+        { text: "Ask another Anglo parent", money: -150, morale: 5, result: "The Anglo parent WhatsApp group saves the day again!" },
+        { text: "Tell your kid it's a day off", morale: -15, result: "Your kid is the only one not on the trip. They are NOT happy." }
+      ]},
+      { text: "Tax season hits. You need to file in BOTH the US and Israel. The deadlines differ. The rules contradict.", icon: "\u{1F4CA}", choices: [
+        { text: "Hire PSA to handle both", money: -4000, morale: 20, prog: 2, result: "They use the Foreign Tax Credit and treaty provisions perfectly. You might get a refund!" },
+        { text: "TurboTax for US, local CPA for Israel", money: -3000, morale: -10, result: "The two filings don't match. Both countries have questions." },
+        { text: "Request extensions on everything", money: -500, morale: -5, result: "Extensions granted! You've bought time. But the problem hasn't gone away." }
+      ]},
+      { text: "It's your first Yom Ha'atzmaut! Your neighbor invites you to a mangal on the roof.", icon: "\u{1F9C6}", choices: [
+        { text: "Go and bring American-style burgers", money: -200, morale: 20, hebrew: 10, result: "Your burgers are a HIT. You're now 'the American with the good meat.' Instant cred!" },
+        { text: "Politely decline - too overwhelmed", morale: -5, result: "You watch from your window. The fireworks are beautiful. You feel a little lonely." },
+        { text: "Go but stress about US taxes", morale: 5, result: "You have fun despite yourself. Someone mentions they also use PSA. Small world!" }
+      ]},
+      { text: "The shekel strengthened 8% against the dollar. Your US salary is worth less.", icon: "\u{1F4B8}", choices: [
+        { text: "Set up regular currency transfers", money: -500, morale: 5, result: "Smart! Dollar-cost averaging protects you from big swings." },
+        { text: "Convert a large lump sum now", money: -3000, morale: -10, result: "Of course, the rate improves right after. Classic." },
+        { text: "Keep everything in dollars", morale: -5, result: "Your landlord wants shekels. Your school wants shekels. Everything wants shekels." }
+      ]},
+      { text: "Your kid needs a specialist. Kupat Cholim says the wait is 4 months.", icon: "\u{1F3E5}", choices: [
+        { text: "Go private, pay out of pocket", money: -2000, morale: 5, result: "Seen within a week. Wallet hurts but your kid is fine." },
+        { text: "Call every morning for cancellations", morale: -10, hebrew: 10, result: "After 2 weeks of daily calls in Hebrew, you score an appointment!" },
+        { text: "Ask the Anglo Facebook group", morale: 5, result: "Someone knows a protekzia connection. Appointment next Tuesday!" }
+      ]},
+      { text: "Your US credit card gets declined at the makolet. 'Foreign transaction' block.", icon: "\u{1F4B3}", choices: [
+        { text: "Call the bank during US hours", money: -50, morale: 5, result: "After 20 minutes on hold, they unblock it. It's 3am your time." },
+        { text: "Use your Israeli debit card", money: -100, hebrew: 5, result: "The PIN pad is in Hebrew. You manage. Barely." },
+        { text: "Pay cash in shekels", money: -30, result: "You hand over 200 NIS for a 15 NIS purchase. The cashier is not amused." }
+      ]}
+    ];
+
+    const ENDINGS = {
+      win: { emoji: "\u{1F389}\u{1F1EE}\u{1F1F1}", title: "\u{05DE}\u{05D6}\u{05DC} \u{05D8}\u{05D5}\u{05D1}!", sub: "You Made It!", tip: "Keep your US accountant on speed dial. You'll need them every April... and June... and October." },
+      broke: { emoji: "\u{1F4B8}", title: "Bankrupt!", sub: "Your Aliyah Journey Has Ended", tip: "A good US-Israel tax accountant pays for themselves many times over!" },
+      quit: { emoji: "\u{1F61E}", title: "Yerida", sub: "You've Returned to America", tip: "Aliyah is a marathon, not a sprint. The right professional support makes all the difference!" },
+      sick: { emoji: "\u{1F3E5}", title: "Hospitalized", sub: "Stress Got The Best of You", tip: "Don't let tax stress harm your health. Get professional help early!" }
+    };
+
+    // ── STATE ──
+    let state = {
+      screen: "title",
+      prof: null,
+      city: null,
+      money: 50000,
+      morale: 80,
+      health: 100,
+      hebrew: 5,
+      phase: 0,
+      curEvent: null,
+      choiceResult: null,
+      usedEvents: [],
+      ending: null,
+      frame: 0,
+      travelTimer: null,
+      frameTimer: null
+    };
+
+    function setState(updates) {
+      Object.assign(state, updates);
+      render();
+    }
+
+    // ── GAME LOGIC ──
+    function reset() {
+      clearTimers();
+      state = {
+        screen: "title", prof: null, city: null, money: 50000, morale: 80,
+        health: 100, hebrew: 5, phase: 0, curEvent: null, choiceResult: null,
+        usedEvents: [], ending: null, frame: 0, travelTimer: null, frameTimer: null
+      };
+      render();
+    }
+
+    function pickProf(i) {
+      const p = PROFESSIONS[i];
+      setState({ prof: p, money: p.startMoney, screen: "city" });
+    }
+
+    function pickCity(i) {
+      const c = CITIES[i];
+      setState({ city: c });
+      startTravel();
+    }
+
+    function clearTimers() {
+      if (state.travelTimer) clearTimeout(state.travelTimer);
+      if (state.frameTimer) clearInterval(state.frameTimer);
+    }
+
+    function startTravel() {
+      clearTimers();
+      state.frame = 0;
+      state.screen = "travel";
+      render();
+
+      state.frameTimer = setInterval(function() {
+        state.frame++;
+        render();
+      }, 250);
+
+      state.travelTimer = setTimeout(function() {
+        clearInterval(state.frameTimer);
+        pickEvent();
+      }, 2500);
+    }
+
+    function pickEvent() {
+      let avail = ALL_EVENTS.filter(function(_, i) { return state.usedEvents.indexOf(i) === -1; });
+      if (avail.length === 0) {
+        state.usedEvents = [];
+        avail = ALL_EVENTS;
+      }
+      const idx = Math.floor(Math.random() * avail.length);
+      const picked = avail[idx];
+      const realIdx = ALL_EVENTS.indexOf(picked);
+      state.usedEvents.push(realIdx);
+      setState({ curEvent: picked, choiceResult: null, screen: "event" });
+    }
+
+    function choose(ci) {
+      const ch = state.curEvent.choices[ci];
+      let nm = state.money + (ch.money || 0);
+      let nmo = Math.min(100, Math.max(0, state.morale + (ch.morale || 0)));
+      let nh = state.health;
+      let nheb = Math.min(100, Math.max(0, state.hebrew + (ch.hebrew || 0)));
+      let np = state.phase;
+
+      if (ch.prog) np = Math.min(PHASES.length - 1, state.phase + ch.prog);
+      else if (Math.random() > 0.5) np = Math.min(PHASES.length - 1, state.phase + 1);
+      if (nmo < 30) nh = Math.max(0, nh - 5);
+
+      let ending = null;
+      if (np >= PHASES.length - 1) ending = "win";
+      else if (nm <= -5000) ending = "broke";
+      else if (nmo <= 0) ending = "quit";
+      else if (nh <= 0) ending = "sick";
+
+      setState({ money: nm, morale: nmo, health: nh, hebrew: nheb, phase: np, choiceResult: ch.result, ending: ending });
+    }
+
+    function nextTurn() {
+      if (state.ending) setState({ screen: "end" });
+      else startTravel();
+    }
+
+    // ── RENDER HELPERS ──
+    function bar(value, max, color, label) {
+      const pct = Math.max(0, Math.min(100, (value / max) * 100));
+      return '<div style="margin-bottom:6px">' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:2px">' +
+          '<span style="font-size:9px;color:#8b9b8b">' + label + '</span>' +
+          '<span style="font-size:9px;color:' + color + '">' + Math.round(value) + '</span>' +
+        '</div>' +
+        '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:' + color + '"></div></div>' +
+      '</div>';
+    }
+
+    function moneyColor() { return state.money < 5000 ? "#ff4444" : "#33ff33"; }
+    function moraleColor() { return state.morale < 30 ? "#ff4444" : "#33ff33"; }
+
+    // ── RENDER ──
+    function render() {
+      const app = document.getElementById("app");
+      let html = "";
+
+      // TITLE
+      if (state.screen === "title") {
+        html = '<div style="text-align:center;padding-top:50px">' +
+          '<div style="font-size:48px;margin-bottom:10px">\u{1F1EE}\u{1F1F1}</div>' +
+          '<div style="font-size:24px;font-weight:bold;letter-spacing:2px;margin-bottom:4px">THE</div>' +
+          '<div style="font-size:28px;font-weight:bold;color:#44ffaa;letter-spacing:3px;margin-bottom:4px">ALIYAH</div>' +
+          '<div style="font-size:24px;font-weight:bold;letter-spacing:2px;margin-bottom:20px">TRAIL</div>' +
+          '<div style="font-size:11px;color:#8bab8b;margin-bottom:30px;line-height:1.8">Can you survive taxes, bureaucracy,<br>and Israeli banks?</div>' +
+          '<div style="text-align:left;padding:0 20px;margin-bottom:30px">' +
+            '<div style="font-size:10px;color:#5a7a5a;margin-bottom:6px">\u2605 Navigate FBAR & FATCA deadlines</div>' +
+            '<div style="font-size:10px;color:#5a7a5a;margin-bottom:6px">\u2605 Survive Israeli bureaucracy</div>' +
+            '<div style="font-size:10px;color:#5a7a5a;margin-bottom:6px">\u2605 Manage dual taxation</div>' +
+            '<div style="font-size:10px;color:#5a7a5a;margin-bottom:6px">\u2605 Open a bank account (LOL)</div>' +
+            '<div style="font-size:10px;color:#5a7a5a;margin-bottom:6px">\u2605 Learn enough Hebrew to order falafel</div>' +
+          '</div>' +
+          '<button class="btn btn-hi" style="text-align:center;padding:16px;font-size:13px" onclick="setState({screen:\'prof\'})">\u25B6 START YOUR JOURNEY</button>' +
+          '<div style="margin-top:24px;font-size:9px;color:#3a5a3a">A Philip Stein & Associates Production</div>' +
+        '</div>';
+      }
+
+      // PROFESSION
+      else if (state.screen === "prof") {
+        html = '<div style="font-size:16px;text-align:center;margin-bottom:6px;font-weight:bold">Choose Your Path</div>' +
+          '<div style="font-size:10px;color:#8bab8b;text-align:center;margin-bottom:16px">Your profession determines starting funds and challenges.</div>';
+        PROFESSIONS.forEach(function(p, i) {
+          html += '<button class="btn" onclick="pickProf(' + i + ')">' +
+            '<div style="color:#44ffaa;margin-bottom:4px;font-weight:bold">' + p.name + '</div>' +
+            '<div style="color:#8bab8b;font-size:10px">' + p.desc + '</div>' +
+            '<div style="color:#33ff33;font-size:10px;margin-top:4px">Starting: $' + p.startMoney.toLocaleString() + '</div>' +
+          '</button>';
+        });
+      }
+
+      // CITY
+      else if (state.screen === "city") {
+        html = '<div style="font-size:16px;text-align:center;margin-bottom:6px;font-weight:bold">Where Will You Settle?</div>' +
+          '<div style="font-size:10px;color:#8bab8b;text-align:center;margin-bottom:16px">As a ' + (state.prof ? state.prof.name : "") + '</div>';
+        CITIES.forEach(function(c, i) {
+          var costIcon = c.cost > 1.1 ? "\u{1F4B0}\u{1F4B0}\u{1F4B0}" : c.cost > 0.95 ? "\u{1F4B0}\u{1F4B0}" : "\u{1F4B0}";
+          var costColor = c.cost > 1.1 ? "#ff6644" : "#33ff33";
+          html += '<button class="btn" onclick="pickCity(' + i + ')">' +
+            '<div style="color:#44ffaa;margin-bottom:4px;font-weight:bold">' + c.name + '</div>' +
+            '<div style="color:#8bab8b;font-size:10px">' + c.desc + '</div>' +
+            '<div style="color:' + costColor + ';font-size:10px;margin-top:4px">Cost: ' + costIcon + ' (' + Math.round(c.cost * 100) + '%)</div>' +
+          '</button>';
+        });
+      }
+
+      // TRAVEL
+      else if (state.screen === "travel") {
+        var fly = state.phase < 2;
+        var chars = fly
+          ? ["\u2708\uFE0F  \u00B7 \u00B7 \u00B7 \u00B7 \u00B7  \u{1F1EE}\u{1F1F1}", " \u00B7 \u2708\uFE0F  \u00B7 \u00B7 \u00B7 \u00B7  \u{1F1EE}\u{1F1F1}", " \u00B7 \u00B7 \u2708\uFE0F  \u00B7 \u00B7 \u00B7  \u{1F1EE}\u{1F1F1}", " \u00B7 \u00B7 \u00B7 \u2708\uFE0F  \u00B7 \u00B7  \u{1F1EE}\u{1F1F1}", " \u00B7 \u00B7 \u00B7 \u00B7 \u2708\uFE0F  \u00B7  \u{1F1EE}\u{1F1F1}"]
+          : ["\u{1F6B6}  \u00B7 \u00B7 \u00B7 \u00B7  \u{1F3E0}", " \u00B7 \u{1F6B6}  \u00B7 \u00B7 \u00B7  \u{1F3E0}", " \u00B7 \u00B7 \u{1F6B6}  \u00B7 \u00B7  \u{1F3E0}", " \u00B7 \u00B7 \u00B7 \u{1F6B6}  \u00B7  \u{1F3E0}"];
+        html = '<div style="text-align:center;padding-top:80px">' +
+          '<div style="font-size:14px;color:#44ffaa;margin-bottom:24px;font-weight:bold">' + PHASES[state.phase] + '</div>' +
+          '<div style="font-size:18px;margin-bottom:24px;letter-spacing:2px">' + chars[state.frame % chars.length] + '</div>' +
+          '<div style="font-size:11px;color:#8bab8b">' + (fly ? "Crossing the Atlantic..." : "Navigating " + (state.city ? state.city.name : "Israel") + "...") + '</div>' +
+        '</div>';
+      }
+
+      // EVENT
+      else if (state.screen === "event" && state.curEvent) {
+        var ev = state.curEvent;
+        // Stats bar
+        html = '<div class="card">' +
+          '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px">' +
+            '<span style="font-size:10px;color:' + moneyColor() + '">\u{1F4B5} $' + state.money.toLocaleString() + '</span>' +
+            '<span style="font-size:10px;color:' + moraleColor() + '">\u{1F60A} ' + state.morale + '%</span>' +
+            '<span style="font-size:10px">\u2764\uFE0F ' + state.health + '%</span>' +
+            '<span style="font-size:10px;color:#44aaff">\u{1F5E3}\uFE0F ' + state.hebrew + '%</span>' +
+          '</div>' +
+          '<div style="font-size:9px;color:#8bab8b;margin-bottom:6px">\u{1F4CD} ' + PHASES[state.phase] + ' \u2014 ' + (state.city ? state.city.name : "En Route") + '</div>' +
+          '<div class="progress-track"><div class="progress-fill" style="width:' + (state.phase / (PHASES.length - 1) * 100) + '%"></div></div>' +
+        '</div>';
+
+        html += '<div class="card">';
+        html += '<div style="font-size:13px;margin-bottom:16px;line-height:1.7">' + ev.icon + ' ' + ev.text + '</div>';
+
+        if (!state.choiceResult) {
+          ev.choices.forEach(function(ch, i) {
+            var costHtml = "";
+            if (ch.money) {
+              var col = ch.money > 0 ? "#44ff44" : "#ff6644";
+              costHtml = '<div style="font-size:9px;color:' + col + ';margin-top:4px">' + (ch.money > 0 ? "+" : "") + "$" + ch.money.toLocaleString() + '</div>';
+            }
+            html += '<button class="btn" onclick="choose(' + i + ')">' + ch.text + costHtml + '</button>';
+          });
+        } else {
+          html += '<div class="result-box" style="font-size:12px;line-height:1.7;color:#88ccaa">' + state.choiceResult + '</div>';
+          html += bar(Math.max(0, state.money), state.prof ? state.prof.startMoney : 80000, state.money < 5000 ? "#ff4444" : "#33ff33", "FUNDS");
+          html += bar(state.morale, 100, state.morale < 30 ? "#ff4444" : "#44ffaa", "MORALE");
+          html += bar(state.health, 100, state.health < 30 ? "#ff4444" : "#33ff33", "HEALTH");
+          html += bar(state.hebrew, 100, "#44aaff", "HEBREW");
+          html += '<button class="btn btn-hi" style="text-align:center;margin-top:8px;font-size:13px" onclick="nextTurn()">\u25B6 Continue Journey</button>';
+        }
+        html += '</div>';
+      }
+
+      // END
+      else if (state.screen === "end" || state.ending) {
+        var e = ENDINGS[state.ending] || ENDINGS.broke;
+        var winText = {
+          win: "You've successfully made Aliyah to " + (state.city ? state.city.name : "Israel") + "! Your Hebrew is " + (state.hebrew > 50 ? "actually decent" : "still terrible, but that's okay") + ". You survived the banks, the bureaucracy, and the dual taxation. Welcome home!",
+          broke: "Between double taxation, missed filing penalties, and exchange rate losses, your funds have run dry. Maybe you should have hired a cross-border tax specialist...",
+          quit: "The bureaucracy won. The banks won. The 12 post-dated checks broke you. You're back in the US, where banks don't faint when you show your passport.",
+          sick: "Filing in two countries, dealing with Bituach Leumi, and trying to read Hebrew tax notices finally caught up to you. At least Kupat Cholim covers the hospital stay."
+        };
+        var titleColor = state.ending === "win" ? "#44ffaa" : "#ff6644";
+
+        html = '<div style="text-align:center;padding-top:30px">' +
+          '<div style="font-size:48px;margin-bottom:10px">' + e.emoji + '</div>' +
+          '<div style="font-size:20px;font-weight:bold;color:' + titleColor + ';margin-bottom:6px">' + e.title + '</div>' +
+          '<div style="font-size:12px;color:#8bab8b;margin-bottom:20px">' + e.sub + '</div>' +
+          '<div class="card"><div style="font-size:11px;line-height:1.8">' + winText[state.ending] + '</div></div>' +
+          '<div class="card" style="text-align:left">' +
+            '<div style="font-size:11px;color:#44ffaa;margin-bottom:8px;font-weight:bold">Final Stats:</div>' +
+            '<div style="font-size:10px;color:#8bab8b;line-height:2.2">' +
+              '\u{1F4BC} ' + (state.prof ? state.prof.name : "") + '<br>' +
+              '\u{1F4CD} ' + (state.city ? state.city.name : "Never made it") + '<br>' +
+              '\u{1F4B5} $' + state.money.toLocaleString() + '<br>' +
+              '\u{1F60A} Morale: ' + state.morale + '%<br>' +
+              '\u2764\uFE0F Health: ' + state.health + '%<br>' +
+              '\u{1F5E3}\uFE0F Hebrew: ' + state.hebrew + '%<br>' +
+              '\u{1F4CB} Phase: ' + PHASES[state.phase] +
+            '</div>' +
+          '</div>' +
+          '<div class="tip-box"><div style="font-size:11px;color:#44ffaa;line-height:1.8">\u{1F4A1} ' + e.tip + '</div></div>' +
+          '<button class="btn btn-hi" style="text-align:center;padding:16px;font-size:13px" onclick="reset()">\u25B6 PLAY AGAIN</button>' +
+          '<div style="margin-top:20px;font-size:9px;color:#3a5a3a;line-height:1.8">' +
+            'Philip Stein & Associates<br>US Tax Experts for Americans in Israel<br>pstein.com' +
+          '</div>' +
+        '</div>';
+      }
+
+      app.innerHTML = html;
+    }
+
+    // Start
+    render();
+  </script>
+</body>
+</html>
