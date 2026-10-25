@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>The Aliyah Trail - Philip Stein & Associates</title>
+  <title>The Aliyah Trail - Jacob Bros</title>
   <meta name="description" content="Can you survive taxes, bureaucracy, and Israeli banks? An Oregon Trail-style game for Americans making Aliyah." />
   <meta property="og:title" content="The Aliyah Trail" />
   <meta property="og:description" content="Can you survive taxes, bureaucracy, and Israeli banks? Play the Aliyah Trail!" />
@@ -79,7 +79,7 @@
         { text: "Cry in the lobby", morale: -5, result: "An elderly Israeli woman brings you tea and cookies. You feel slightly better." }
       ]},
       { text: "FBAR deadline is approaching! You realize you forgot to report your Israeli accounts.", icon: "\u{1F4CB}", choices: [
-        { text: "Call your US accountant immediately", money: -2000, morale: 5, prog: 1, result: "Your accountant at Philip Stein & Associates saves the day. Crisis averted!" },
+        { text: "Call your US accountant immediately", money: -2000, morale: 5, prog: 1, result: "Your US-Israel tax accountant saves the day. Crisis averted!" },
         { text: "Try to file it yourself on FinCEN", morale: -20, result: "You accidentally reported your shekels as dollars. The IRS is very interested now." },
         { text: "Panic and do nothing", money: -10000, morale: -25, result: "The penalty notice arrives. It's... not pretty." }
       ]},
@@ -129,14 +129,14 @@
         { text: "Tell your kid it's a day off", morale: -15, result: "Your kid is the only one not on the trip. They are NOT happy." }
       ]},
       { text: "Tax season hits. You need to file in BOTH the US and Israel. The deadlines differ. The rules contradict.", icon: "\u{1F4CA}", choices: [
-        { text: "Hire PSA to handle both", money: -4000, morale: 20, prog: 2, result: "They use the Foreign Tax Credit and treaty provisions perfectly. You might get a refund!" },
+        { text: "Hire a US-Israel tax accountant to handle both", money: -4000, morale: 20, prog: 2, result: "They use the Foreign Tax Credit and treaty provisions perfectly. You might get a refund!" },
         { text: "TurboTax for US, local CPA for Israel", money: -3000, morale: -10, result: "The two filings don't match. Both countries have questions." },
         { text: "Request extensions on everything", money: -500, morale: -5, result: "Extensions granted! You've bought time. But the problem hasn't gone away." }
       ]},
       { text: "It's your first Yom Ha'atzmaut! Your neighbor invites you to a mangal on the roof.", icon: "\u{1F9C6}", choices: [
         { text: "Go and bring American-style burgers", money: -200, morale: 20, hebrew: 10, result: "Your burgers are a HIT. You're now 'the American with the good meat.' Instant cred!" },
         { text: "Politely decline - too overwhelmed", morale: -5, result: "You watch from your window. The fireworks are beautiful. You feel a little lonely." },
-        { text: "Go but stress about US taxes", morale: 5, result: "You have fun despite yourself. Someone mentions they also use PSA. Small world!" }
+        { text: "Go but stress about US taxes", morale: 5, result: "You have fun despite yourself. Someone mentions they use the same accountant. Small world!" }
       ]},
       { text: "The shekel strengthened 8% against the dollar. Your US salary is worth less.", icon: "\u{1F4B8}", choices: [
         { text: "Set up regular currency transfers", money: -500, morale: 5, result: "Smart! Dollar-cost averaging protects you from big swings." },
@@ -305,7 +305,7 @@
             '<div style="font-size:10px;color:#5a7a5a;margin-bottom:6px">\u2605 Learn enough Hebrew to order falafel</div>' +
           '</div>' +
           '<button class="btn btn-hi" style="text-align:center;padding:16px;font-size:13px" onclick="setState({screen:\'prof\'})">\u25B6 START YOUR JOURNEY</button>' +
-          '<div style="margin-top:24px;font-size:9px;color:#3a5a3a">A Philip Stein & Associates Production</div>' +
+          '<div style="margin-top:24px;font-size:9px;color:#3a5a3a">A Jacob Bros Production</div>' +
         '</div>';
       }
 
@@ -419,7 +419,7 @@
           '<div class="tip-box"><div style="font-size:11px;color:#44ffaa;line-height:1.8">\u{1F4A1} ' + e.tip + '</div></div>' +
           '<button class="btn btn-hi" style="text-align:center;padding:16px;font-size:13px" onclick="reset()">\u25B6 PLAY AGAIN</button>' +
           '<div style="margin-top:20px;font-size:9px;color:#3a5a3a;line-height:1.8">' +
-            'Philip Stein & Associates<br>US Tax Experts for Americans in Israel<br>pstein.com' +
+            'A Jacob Bros game<br><a href="https://y2jcpa.github.io/JacobBros/?from=aliyah-trail" style="color:#44ffaa">More games from Jacob Bros \u25B6</a>' +
           '</div>' +
         '</div>';
       }
@@ -430,5 +430,7 @@
     // Start
     render();
   </script>
+  <!-- Jacob Bros: credit and a link back to more games -->
+  <script src="https://y2jcpa.github.io/JacobBros/badge.js" data-game="aliyah-trail" defer></script>
 </body>
 </html>
